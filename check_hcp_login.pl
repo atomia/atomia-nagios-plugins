@@ -43,6 +43,8 @@ exit_unknown("usage: $0 --uri https://hcp.somehost.com/ --user someuser --pass s
 my $mech = WWW::Mechanize->new();
 exit_unknown("error constructing WWW::Mechanize browser object") unless defined($mech);
 
+$mech->timeout($timeout) || exit_unknown("error setting timeout");
+
 $mech->get($hcp_uri) || exit_critical("error fetching hcp login page");
 
 exit_critical("PassiveStsEndpoint.aspx not found on login page") unless defined($mech->content) && $mech->content =~ /PassiveStsEndpoint\.aspx/;
