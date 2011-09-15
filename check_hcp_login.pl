@@ -44,26 +44,34 @@ my $mech = WWW::Mechanize->new();
 exit_unknown("error constructing WWW::Mechanize browser object") unless defined($mech);
 
 $mech->timeout($timeout) || exit_unknown("error setting timeout");
+$mech->add_header('Accept-Encoding' => undef);
 
-$mech->get($hcp_uri) || exit_critical("error fetching hcp login page");
+eval {
+	$mech->get($hcp_uri) || exit_critical("error fetching hcp login page");
+	
+	exit_critical("PassiveStsEndpoint.aspx not found on login page") unless defined($mech->content) && $mech->content =~ /PassiveStsEndpoint\.aspx/;
+	
+	$mech->submit_form(
+	        form_number => 1,
+	        fields      => { username => $hcp_user, password => $hcp_pass }
+	);
+	
+	exit_critical("error submitting login form") unless defined($mech->content);
+	
+	exit_critical("login of $hcp_user failed, got redirected back to login page") if $mech->content =~ /PassiveStsEndpoint\.aspx/;
 
-exit_critical("PassiveStsEndpoint.aspx not found on login page") unless defined($mech->content) && $mech->content =~ /PassiveStsEndpoint\.aspx/;
+	exit_critical("redirect page after login didn't contain RequestSecurityTokenResponseCollection") unless $mech->content =~ /RequestSecurityTokenResponseCollection/;
+	
+	$mech->submit_form(form_number => 1);
+	
+	exit_critical("error submitting javascript redirect form with token") unless defined($mech->content);
+	
+	exit_critical("match string not found after login") unless $mech->content =~ /$string_match/;
+};
 
-$mech->submit_form(
-        form_number => 1,
-        fields      => { username => $hcp_user, password => $hcp_pass }
-);
-
-exit_critical("error submitting login form") unless defined($mech->content);
-
-exit_critical("login of $hcp_user failed, got redirected back to login page") if $mech->content =~ /PassiveStsEndpoint\.aspx/;
-
-exit_critical("redirect page after login didn't contain RequestSecurityTokenResponseCollection") unless $mech->content =~ /RequestSecurityTokenResponseCollection/;
-
-$mech->submit_form(form_number => 1);
-
-exit_critical("error submitting javascript redirect form with token") unless defined($mech->content);
-
-exit_critical("match string not found after login") unless $mech->content =~ /$string_match/;
+if ($@) {
+	my $exception = $@;
+	exit_critical($exception);
+}
 
 exit_ok("login successfull, all tests passed");
