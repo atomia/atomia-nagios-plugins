@@ -63,10 +63,18 @@ eval {
 	exit_critical("redirect page after login didn't contain RequestSecurityTokenResponseCollection") unless $mech->content =~ /RequestSecurityTokenResponseCollection/;
 	
 	$mech->submit_form(form_number => 1);
-	
-	exit_critical("error submitting javascript redirect form with token") unless defined($mech->content);
-	
-	exit_critical("match string not found after login") unless $mech->content =~ /$string_match/;
+
+	my $content = $mech->content;	
+	exit_critical("error submitting javascript redirect form with token") unless defined($content);
+
+	unless ($content =~ /$string_match/) {
+		exit_critical("timeout post javascript redirect but pre working HCP page") if $content =~ /timeout/;
+
+		my $summary = substr($content, 0, 16);
+		$summary =~ s/[\r\n]//g;
+
+		exit_critical("match string not found after login, first 16 bytes where $summary");
+	}
 };
 
 if ($@) {
