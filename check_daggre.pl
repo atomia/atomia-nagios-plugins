@@ -50,9 +50,18 @@ eval {
         my $json_text = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($mech->content);
         exit_unknown("decoding of json failed") unless defined($json_text);
         
-        unless ($json_text->{last_five_min}->{count} > 0 || $json_text->{last_five_min}->{sum} > 0)
+        use DateTime;
+        use DateTime::Format::ISO8601;
+        my $time = DateTime->now(time_zone=>'GMT');
+        
+        my $last = DateTime::Format::ISO8601->parse_datetime($json_text->{last}->{start_of_span});
+        
+        my $interval = DateTime::Duration->new( days => 0, hours => 0, minutes => 15 );
+        
+                
+        unless ($last + $interval > $time)
         {
-        	exit_critical("No stats are reported from daggre. Count: " . $json_text->{last_five_min}->{count} . ", Sum: " . $json_text->{last_five_min}->{sum});
+        	exit_critical("No recent stats are available: last is " . $json_text->{last}->{start_of_span});
         }
 };
 
@@ -61,4 +70,4 @@ if ($@) {
         exit_critical($exception);
 }
  
-exit_ok("daggre has stats for the last 5 mins");
+exit_ok("daggre has stats for the last 15 mins");
