@@ -2,9 +2,24 @@
 #set -x # enable debug
 set -e # quit on first error
 
-ec2_secret_key='9ca604d8-599c-4f48-b7b8-41232b4396f6'
-ec2_access_key='0a316d06-5204-4a7c-baff-008e9d819fce:atomiaopenstack'
-ec2_url='http://212.247.189.132:8773/services/Cloud'
+# validate parameters
+if [ $# -lt 3 ]
+then
+    echo
+    echo "Checks if openstack environment is up and running."
+    echo
+    echo "Usage: check_openstack.sh <ec2_secret_key> <ec2_access_key> <ec2_url>"
+    echo
+    echo "<ec2_secret_key> - EC2 secret key"
+    echo "<ec2_access_key> - EC2 access key"
+    echo "<ec2_url> - EC2 service URL"
+	echo
+    exit 2
+fi
+
+ec2_secret_key=$1
+ec2_access_key=$2
+ec2_url=$3
 
 # first add one machine
 new_machine_id=`euca-run-instances ami-00000002 -t m1.tiny -a "$ec2_access_key" -s "$ec2_secret_key" -U "$ec2_url" | grep INSTANCE | awk -F ' ' '{ print $2 }'`
