@@ -9,7 +9,7 @@ domain="$1"
 min_hourly_visits="$2"
 hours_process_delay="$3"
 
-current_hour=`date +%H | sed 's/^0*//'`
+current_hour=`date +%H | sed 's/^0//'`
 if [ -z "$current_hour" ]; then
 	echo "UNKNOWN: Error fetching current hour"
 	exit 3
