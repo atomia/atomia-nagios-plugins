@@ -37,6 +37,7 @@ def parse_arguments():
                         help="String to match after login. Login is considered successful if response status is 200"
                              "(OK) and matching string is found in response.")
     args = vars(parser.parse_args())
+    args['timeout'] = int(args['timeout'])
 
 
 def insert_user_credentials(form_data: dict):
