@@ -2,27 +2,31 @@
 
 import argparse
 import requests
-from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+from six.moves.urllib.parse import urljoin
 
 
-def exit_ok(message: str):
-    print(f"OK: {message}")
+def exit_ok(message):
+    print("OK: {message}"
+          .format(message=message))
     exit(0)
 
 
-def exit_warning(message: str):
-    print(f"WARNING: {message}")
+def exit_warning(message):
+    print("WARNING: {message}"
+          .format(message=message))
     exit(1)
 
 
-def exit_critical(message: str):
-    print(f"CRITICAL: {message}")
+def exit_critical(message):
+    print("CRITICAL: {message}"
+          .format(message=message))
     exit(2)
 
 
-def exit_unknown(message: str):
-    print(f"UNKNOWN: {message}")
+def exit_unknown(message):
+    print("UNKNOWN: {message}"
+          .format(message=message))
     exit(3)
 
 
@@ -33,14 +37,14 @@ def parse_arguments():
     parser.add_argument("--username", help="Username or Email", required=True)
     parser.add_argument("--password", help="Password", required=True)
     parser.add_argument("--timeout", help="Timeout", default=5)
-    parser.add_argument("--matchstring", required=False,
+    parser.add_argument("--match", required=False,
                         help="String to match after login. Login is considered successful if response status is 200"
                              "(OK) and matching string is found in response.")
     args = vars(parser.parse_args())
     args['timeout'] = int(args['timeout'])
 
 
-def insert_user_credentials(form_data: dict):
+def insert_user_credentials(form_data):
     for key in form_data.keys():
         if key is None:
             continue
@@ -57,28 +61,36 @@ def extract_form_inputs(form):
     return dict((field.get('name'), field.get('value')) for field in fields)
 
 
-def verify_login(session: requests.sessions):
+def verify_login(session):
     try:
         response_get = session.get(args['url'], timeout=args['timeout'])
         response_get.raise_for_status()
 
-        if not args['matchstring'] in response_get.text:
-            raise Exception(f"MatchString not found after login. First 50chars: {response_get.text[0:50]}")
+        if not args['match'] in response_get.text:
+            raise Exception("[VERIFY_LOGIN] Match '{match}' not found after login. "
+                            "ResponseCode: {code}; "
+                            "First 50 chars: {response}"
+                            .format(response=response_get.text[0:50],
+                                    code=response_get.status_code,
+                                    match=args['match']))
 
     except requests.exceptions.HTTPError as ex:
-        exit_critical(f"[HTTP ERROR][VALIDATE_LOGIN] {ex}")
+        exit_critical("[HTTP ERROR][VERIFY_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.ConnectionError as ex:
-        exit_critical(f"[CONNECTION ERROR][VALIDATE_LOGIN] {ex}")
+        exit_critical("[CONNECTION ERROR][VERIFY_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.Timeout as ex:
-        exit_critical(f"[TIMEOUT][VALIDATE_LOGIN] {ex}")
+        exit_critical("[TIMEOUT][VERIFY_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.RequestException as ex:
-        exit_critical(f"[REQUEST ERROR][VALIDATE_LOGIN] {ex}")
+        exit_critical("[REQUEST ERROR][VERIFY_LOGIN] {ex}"
+                      .format(ex=ex))
     except Exception as ex:
         exit_critical(str(ex))
 
 
 def main():
-
     parse_arguments()
     try:
         session = requests.session()
@@ -95,19 +107,26 @@ def main():
         response_post = session.post(form_action, data=form_data)
         response_post.raise_for_status()
 
-        if not args['matchstring'] is None:
+        is_verification_enabled = not args['match'] is None;
+
+        if is_verification_enabled:
             verify_login(session)
 
-        exit_ok("Login successful. (Login verification not enabled)")
+        exit_ok("Login successful. (Login verified: {verify})"
+                .format(verify=is_verification_enabled))
 
     except requests.exceptions.HTTPError as ex:
-        exit_critical(f"[HTTP ERROR] {ex}")
+        exit_critical("[HTTP ERROR][CHECK_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.ConnectionError as ex:
-        exit_critical(f"[CONNECTION ERROR] {ex}")
+        exit_critical("[CONNECTION ERROR][CHECK_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.Timeout as ex:
-        exit_critical(f"[TIMEOUT] {ex}")
+        exit_critical("[TIMEOUT][CHECK_LOGIN] {ex}"
+                      .format(ex=ex))
     except requests.exceptions.RequestException as ex:
-        exit_critical(f"[REQUEST ERROR] {ex}")
+        exit_critical("[REQUEST ERROR][CHECK_LOGIN] {ex}"
+                      .format(ex=ex))
     except Exception as ex:
         exit_critical(str(ex))
 
