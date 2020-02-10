@@ -3,11 +3,10 @@
 # Name:        check_admins.ps1
 # Date:        2020-02-07
 # Author:      nikola.vitanovic@atomia.com
-# Version:     1.0.0
+# Version:     1.1.0
 # Parameters:
-#              -enterprise
-#              -domain
-#              -local
+#              -domain 'Domain Admins'
+#              -local 'Administrators'
 #              -usernames "SOMECOMPUTER\User","SOMEDOMAIN\User2"
 #
 # Returns:
@@ -22,18 +21,22 @@
 #              be shown in the new lines after the CRITICAL message.
 #
 ##########################################################################################
+
 param (
-    [switch]$enterprise = $false,
-    [switch]$domain = $false,
-    [switch]$local = $false,
-    [String[]]$usernames
+    [string]$domain = $null,
+    [string]$local = $null,
+    [string[]]$usernames
 )
 
 # Get Local admins from the computer
 function get-localadmin {
-    param ($strcomputer)
-    $admins = Gwmi win32_groupuser –computer $strcomputer   
-    $admins = $admins |? {$_.groupcomponent –like '*"Administrators"'}  
+    param (
+        [string]$strcomputer = $env:computername,
+        [string]$groupname = "Administrators"
+    )
+    $admins = Gwmi win32_groupuser –computer $strcomputer
+    $groupname = '*"{0}"' -f $groupname
+    $admins = $admins |? {$_.groupcomponent –like $groupname}  
     $admins |% {  
     $_.partcomponent –match “.+Domain\=(.+)\,Name\=(.+)$” > $nul  
     $matches[1].trim('"') + “\” + $matches[2].trim('"')  
@@ -41,27 +44,39 @@ function get-localadmin {
 }
 
 # Perpare basic variables needed for the task
-$currentDomain = Get-ADDomain -Current LocalComputer
+$currentDomain = ""
 $admins = ""
 $listOfUsernames = @()
 $listOfAdditionalUsernames = @()
-
 # Get list of admins based on the type
-if($enterprise)
+if($domain)
 {
-    $admins = Get-ADGroupMember -Identity "Enterprise Admins" -Recursive | %{Get-ADUser -Identity $_.distinguishedName} | Select Name
-} 
-elseif($domain)
-{
-    $admins = Get-ADGroupMember -Identity "Domain Admins" -Recursive | %{Get-ADUser -Identity $_.distinguishedName} | Select Name
+    try
+    {
+        $currentDomain = Get-ADDomain -Current LocalComputer
+        $admins = Get-ADGroupMember -Identity $domain -Recursive | %{Get-ADUser -Identity $_.distinguishedName} | Select SamAccountName
+    }
+    catch
+    {
+        Write-Host "UNKNOWN - domain AD commands not successful or invalid group"
+        exit 3
+    }
 }
 elseif($local)
 {
-    $admins = get-localadmin $env:computername
+    try
+    {
+        $admins = get-localadmin -strcomputer $env:computername -groupname $local
+    }
+    catch
+    {
+        Write-Host "UNKNOWN - local WMI commands not successful or invalid group"
+        exit 3
+    }
 }
 else
 {
-    Write-Host "UNKNOWN - No mode selected, use -domain, -enterprise or -local"
+    Write-Host "UNKNOWN - No mode selected, use -domain or -local"
     exit 3
 }
 
@@ -71,7 +86,7 @@ foreach ($item in $admins)
     if($enterprise -or $domain)
     {
         $dc = $currentDomain.NetBIOSName
-        $name = $item.Name
+        $name = $item.SamAccountName
         $listOfUsernames += "$dc\$name"
     }
     else
