@@ -26,17 +26,17 @@
 #              The plugin logs a timestamp of last processed log in the TEMP folder. This
 #              timestamp is used to process only logs after the timestamp. Last processed
 #              log timestamp will be stored and all logs from that time forward will be
-#              processed. 
+#              processed.
 #
 #              ATTENTION: You will get CRITICAL every next time the check occurs, after
 #              the first CRITICAL was encountered. Path to the file that should be deleted
 #              is shown in the CRITICAL Nagios message.
-#              
+#
 #              All parameters are optional. Ignore parameters are essentially whitelist.
 #
 #              If you don't specify -logonTypes parameter only RDP logins will be checked.
 #              You can specify any LogonType. Valid types: https://bit.ly/2ULjexx
-#              
+#
 #              If you don't specify -ignoreUsers any username will be treated as unknown.
 #              Usernames need to be specified in format "DOMAIN\Username" or
 #              "COMPUTER\Username". NetBIOS short name should be used.
@@ -63,7 +63,7 @@ param (
 )
 
 $log = @()
-$lastLogLocation = "$env:TEMP\check_logons.LOG.lock"
+$lastLogLocation = "$env:TEMP\check_logons.LOG-REMOVE.lock"
 $lastCheckLocation = "$env:TEMP\check_logons.DONT-REMOVE.last"
 
 # Show temp location in case DEBUG mode is on
@@ -92,7 +92,7 @@ try
     {
         throw "Does not exist"
     }
-    
+
     $lastCheck = Get-Content -Path $lastCheckLocation
     if([string]::IsNullOrEmpty($lastCheck))
     {
@@ -143,9 +143,9 @@ foreach($item in $eventLogs)
         {
             $log += "Suspicious user - User: $currentComputerNameDomain\$currentUser IP: $currentIp EventIndex: $currentIndex LogonType: $currentLogonType"
         }
-        
+
         # Logic to check if the IP is whitelisted or not.
-        if($disableIPCheck)
+        if( -not $disableIPCheck)
         {
             if($ignoreIPs -contains $currentIp)
             {
