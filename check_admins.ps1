@@ -21,28 +21,25 @@
 #              be shown in the new lines after the CRITICAL message.
 #
 ##########################################################################################
-
 param (
     [string]$domain = $null,
     [string]$local = $null,
     [string[]]$usernames
 )
-
 # Get Local admins from the computer
 function get-localadmin {
     param (
         [string]$strcomputer = $env:computername,
         [string]$groupname = "Administrators"
     )
-    $admins = Gwmi win32_groupuser –computer $strcomputer
+    $admins = Gwmi win32_groupuser -computer $strcomputer
     $groupname = '*"{0}"' -f $groupname
-    $admins = $admins |? {$_.groupcomponent –like $groupname}  
+    $admins = $admins |? {$_.groupcomponent -like $groupname}  
     $admins |% {  
-    $_.partcomponent –match “.+Domain\=(.+)\,Name\=(.+)$” > $nul  
-    $matches[1].trim('"') + “\” + $matches[2].trim('"')  
+    $_.partcomponent –match ".+Domain\=(.+)\,Name\=(.+)$" > $nul  
+    $matches[1].trim('"') + "\" + $matches[2].trim('"') 
     }  
 }
-
 # Perpare basic variables needed for the task
 $currentDomain = ""
 $admins = ""
@@ -79,7 +76,6 @@ else
     Write-Host "UNKNOWN - No mode selected, use -domain or -local"
     exit 3
 }
-
 # Normalize the input of all admins and create a new listOfUSernames
 foreach ($item in $admins)
 {
@@ -94,7 +90,6 @@ foreach ($item in $admins)
         $listOfUsernames  += $item
     }
 }
-
 # Create a list of additional users that are not in the input list
 foreach($item in $listOfUsernames)
 {
@@ -106,7 +101,6 @@ foreach($item in $listOfUsernames)
         $listOfAdditionalUsernames += $item
     }
 }
-
 # Nagios check now needs to print CRITICAL if needed
 if($listOfAdditionalUsernames.Count -eq 0)
 {
