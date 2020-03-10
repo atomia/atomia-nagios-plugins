@@ -9,6 +9,8 @@
 #              -ignoreUsers 'VAGRANT\WINMASTER$','VAGRANT\Administrator'
 #              -ignoreIPs '127.0.0.1','192.168.33.10','192.168.33.22'
 #              -debug
+#              -id some_id_if_multiple_checks
+#              -testOnly
 #
 # Returns:
 #              0 - OK
@@ -52,25 +54,44 @@
 #              There is a -debug parameter that can be used to show more info about what
 #              events the script is currently processing and other details of the run.
 #
+#              If you specify -id a folder will be created in the temp directory where the
+#              log and lock files will be created.
+#
+#              If you specify -testOnly it will just check if there is last lock file that
+#              is not removed. If it exists message from that log will be written else the
+#              OK message will be written to the user.
+#
 ##########################################################################################
 
 param (
-    [string[]]$logonTypes = @('10'),
-    [string[]]$ignoreUsers,
-    [string[]]$ignoreIPs,
+    [string]$logonTypes = '10',
+    [string]$ignoreUsers,
+    [string]$ignoreIPs,
     [switch]$disableIPCheck,
-    [switch]$debug
+    [switch]$debug,
+    [string]$id,
+    [switch]$testOnly
 )
 
+# Initialize basic variables and paths
 $log = @()
-$lastLogLocation = "$env:TEMP\check_logons.LOG-REMOVE.lock"
-$lastCheckLocation = "$env:TEMP\check_logons.DONT-REMOVE.last"
+$tempLocation = "$env:TEMP\$id"
+$lastLogLocation = "$tempLocation\check_logons.LOG-REMOVE.lock"
+$lastCheckLocation = "$tempLocation\check_logons.DONT-REMOVE.last"
+
+# Split the data if needed
+$ignoreIPsList = $ignoreIPs.Split(',').Trim()
+$logonTypesList = $logonTypes.Split(',').Trim()
+$ignoreUsersList = $ignoreUsers.Split(',').Trim()
 
 # Show temp location in case DEBUG mode is on
 if($debug)
 {
-    Write-Host "DEBUG: Temp location $env:TEMP"
+    Write-Host "DEBUG: Temp location $tempLocation"
 }
+
+# Force creation of the directory if it does not exist
+New-Item -ItemType Directory -Force -Path $tempLocation > $null
 
 # Check if the lock file exists with the log.
 # Show that log and exit as CRITICAL.
@@ -80,6 +101,12 @@ if(Test-Path $lastLogLocation)
     Write-Host $output
     Write-Host "Check out the activity and remove $lastLogLocation to recover"
     exit 2
+}
+if($testOnly)
+{
+    # Display OK if no suspicious activity was detected.
+    Write-Host "OK - No suspicious activity in  the last scan"
+    exit 0
 }
 
 # Load the file that contains the last timestamp.
@@ -129,10 +156,10 @@ foreach($item in $eventLogs)
     }
 
     # Check if the logged in account is specific type.
-    if($logonTypes -contains $currentLogonType)
+    if($logonTypesList -contains $currentLogonType)
     {
         # Logic to check if the users is whitelisted or not.
-        if($ignoreUsers -contains "$currentComputerNameDomain\$currentUser")
+        if($ignoreUsersList -contains "$currentComputerNameDomain\$currentUser")
         {
             if($debug)
             {
@@ -147,7 +174,7 @@ foreach($item in $eventLogs)
         # Logic to check if the IP is whitelisted or not.
         if( -not $disableIPCheck)
         {
-            if($ignoreIPs -contains $currentIp)
+            if($ignoreIPsList -contains $currentIp)
             {
                 if($debug)
                 {
