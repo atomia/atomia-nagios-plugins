@@ -220,6 +220,9 @@ If you specify `-testOnly` it will just check if there is last lock file that is
 
 There is no need to specify any other options other than `-id` if you are running `-testOnly` since they would not be checked, only the lock file is checked.
 
+#### logLocation
+If you specify `-logLocation` script will create and check the lock files in that location. You should specify absolute path. By default it's the temp location available from the environment variable.
+
 ### Exit codes
 ```
     0 - OK

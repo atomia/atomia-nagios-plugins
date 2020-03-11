@@ -11,6 +11,7 @@
 #              -debug
 #              -id some_id_if_multiple_checks
 #              -testOnly
+#              -logLocation "C:\logs\"
 #
 # Returns:
 #              0 - OK
@@ -61,6 +62,9 @@
 #              is not removed. If it exists message from that log will be written else the
 #              OK message will be written to the user.
 #
+#              If you specify -logLocation script will create and check the lock files
+#              in that location. You should specify absolute path.
+#
 ##########################################################################################
 
 param (
@@ -70,12 +74,21 @@ param (
     [switch]$disableIPCheck,
     [switch]$debug,
     [string]$id,
-    [switch]$testOnly
+    [switch]$testOnly,
+    [string]$logLocation
 )
 
 # Initialize basic variables and paths
 $log = @()
 $tempLocation = "$env:TEMP\$id"
+
+# If there is an override for the tempLocation
+# set it via parameter
+if($logLocation)
+{
+    $tempLocation = "$logLocation\$id"
+}
+
 $lastLogLocation = "$tempLocation\check_logons.LOG-REMOVE.lock"
 $lastCheckLocation = "$tempLocation\check_logons.DONT-REMOVE.last"
 
