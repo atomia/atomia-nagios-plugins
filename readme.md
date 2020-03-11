@@ -118,6 +118,12 @@ The plugin logs a timestamp of last processed log in the TEMP folder. This times
 
 You will get CRITICAL every next time the check occurs, after the first CRITICAL was encountered. Path to the file that should be deleted is shown in the CRITICAL Nagios message.
 
+The script can be run in two ways via Nagios:
+1. Normally with all options via NSClient++ configuration.
+2. As separate Windows scheduled task, and one instance with `-checkOnly` option in NSClient++ configuration.
+
+The option 2 is preferred because this check may take longer since it parses the EventLog. Option 1 is still possible but would involve in increasing the NRPE timeout which is not covered by this guide.
+
 ### Parameters
 ```
 check_logons.ps1
@@ -125,6 +131,7 @@ check_logons.ps1
     -ignoreUsers 'VAGRANT\WINMASTER$','VAGRANT\Administrator'
     -ignoreIPs '127.0.0.1','192.168.33.10','192.168.33.22'
     -debug
+    -id
 ```
 All parameters are optional. Ignore parameters are essentially whitelists that say that the users or ips in the list are ignored and entries that contain them are ok. They will not result in critical if the ignore value is matched.
 
@@ -205,6 +212,17 @@ If you specify `-disableIPCheck` IPs from the login events won't be checked, the
 #### debug
 This parameter gives more info about the running of the script, of all logs that are processed and various other info such as locations of lock files and temp directory. This should be only specified when you are debugging the output of the script, in case some logs are there that are not correctly parsed.
 
+#### id
+If you specify `-id` option a folder will be created in the temp directory where the log and lock files will be created.
+
+#### testOnly
+If you specify `-testOnly` it will just check if there is last lock file that is not removed. If it exists message from that log will be written else the OK message will be written to the user.
+
+There is no need to specify any other options other than `-id` if you are running `-testOnly` since they would not be checked, only the lock file is checked.
+
+#### logLocation
+If you specify `-logLocation` script will create and check the lock files in that location. You should specify absolute path. By default it's the temp location available from the environment variable.
+
 ### Exit codes
 ```
     0 - OK
@@ -223,6 +241,11 @@ OK - Processed 3883 logs
 ```
 This means that everything was OK and no suspicious activity was detected.
 
+If you specified the `-checkOnly` option and are running the actual check in the task scheduler then if everything was ok you would get the following response:
+```
+OK - No suspicious activity in  the last scan
+```
+
 Next example shows how the script works in User mode only and shows how unknown user `vitanovic` has logged into the server. In case that the `Administrator` has logged no alert would have happened.
 
 Call:
@@ -236,6 +259,37 @@ CRITICAL - There are 2 unauthorised logins
 Suspicious user - User: VAGRANT\vitanovic IP: 192.168.33.1 EventIndex: 148446 LogonType: 10
 Suspicious user - User: VAGRANT\vitanovic IP: 192.168.33.1 EventIndex: 148445 LogonType: 10
 ```
+Example call where you just check for the existance of lock file. This is useful when you are running the script as Nagios check. This example assumes that you already run the script like above with parameters that you want and only check for the existance of the lock file.
+```
+./check_logons.ps1 -id SOME_ID -checkOnly
+```
+### Task scheduler setup
+In order for the script not to timeout, it's needed to set it up as a Scheduled task in Windows. You would need to set this up on each and every server that you want to run the script.
+Let's say that we want to run the script with the following arguments:
+```
+./check_logons.ps1 -logonTypes 10 -disableIPCheck -ignoreUsers 'VAGRANT\WINMASTER$','VAGRANT\Administrator' -id LOGON
+```
+You should first try to run this manually and see if the desired output is generated:
+```
+powershell.exe -executionPolicy bypass -file "C:\Program Files (x86)\Atomia\Security\check_logons.ps1" "-disableIPCheck" "-id" "LOGON" "-ignoreUsers" "VAGRANT\Administrator,VAGRANT\WINMASTER$"
+```
+Make sure that you put the full path to the location of the script that you are trying to run.
+
+If your folder and files are generated as expected proceed with task creation in the scheduled tasks.
+1. Create a new Task (not basic task).
+2. Select the options like on the image:
+
+![](https://i.imgur.com/np49eVP.png)
+
+3. Go to the Triggers tab and set a Daily trigger that repeats every 5 minutes:
+
+![](https://i.imgur.com/Y4dJV6n.png)
+
+4. On the Actions tab fill out the image like the above powershell call:
+
+![](https://i.imgur.com/RVkRd4c.png)
+
+5. You can manually trigger the task to run it for the first time and afterwards it would repeat.
 
 ### Nagios client setup
 Assuming you are using NSClient++ on Windows, the check script needs to be put into: `C:\Program Files\NSClient++\scripts`.
@@ -255,7 +309,7 @@ allow arguments = true
 allow nasty characters = true
 
 [/settings/external scripts/scripts]
-check_logons = cmd /c echo scripts\check_logons.ps1 -logonTypes $ARG1$ -ignoreUsers $ARG2$ -ignoreIPs $ARG3$ $ARG4$  ; exit($lastexitcode) | powershell.exe -command -
+check_logons = cmd /c echo scripts\check_logons.ps1 -id $ARG1$ -checkOnly  ; exit($lastexitcode) | powershell.exe -command -
 ```
 
 Here we define three most common commands for checking **Domain Admins and Enterprise Admins** domain groups and **Administrators** local group.
@@ -264,7 +318,7 @@ Here we define three most common commands for checking **Domain Admins and Enter
 
 Since the script is a shell script that is triggered with `check_nrpe` example call for domain admins would be:
 ```
-/usr/local/nagios/libexec/check_nrpe -H 192.168.177.26 -t 30 -c check_logons -a 10 "ATOMIA\WindowsAdmin" "192.168.176.1" -disableIPCheck
+/usr/local/nagios/libexec/check_nrpe -H 192.168.177.26 -t 30 -c check_logons -a SOME_ID
 ```
 This would call **check_logons** command in the client which then accepts parameters as on the script.
 
@@ -274,12 +328,4 @@ Command: `$USER1$/check_nrpe -H $HOSTADDRESS$ -t 30 -c $ARG1$ -a $ARG2$ $ARG3$ $
 
 $ARG1$: `check_logons`
 
-$ARG2$: `10,3`
-
-$ARG3$: `"ATOMIA\Administrator,ATOMIA\WindowsAdmin"`
-
-$ARG4$: `"192.168.33.1"`
-
-Additional parameters go in the 5th arg. For example `-disableIPCheck`.
-
-$ARG5$: `-disableIPCheck`
+$ARG2$: `SOME_ID`
