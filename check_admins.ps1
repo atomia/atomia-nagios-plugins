@@ -3,7 +3,7 @@
 # Name:        check_admins.ps1
 # Date:        2020-02-07
 # Author:      nikola.vitanovic@atomia.com
-# Version:     1.1.0
+# Version:     1.1.1
 # Parameters:
 #              -domain 'Domain Admins'
 #              -local 'Administrators'
@@ -45,6 +45,11 @@ $currentDomain = ""
 $admins = ""
 $listOfUsernames = @()
 $listOfAdditionalUsernames = @()
+
+## Ensures that $usernames is array of usernames regardless of the parameter input method
+## Resolves: github.com/atomia/atomia-nagios-plugins/issues/7
+$usernames = $usernames.Split(',');
+
 # Get list of admins based on the type
 if($domain)
 {
