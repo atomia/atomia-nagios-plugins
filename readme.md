@@ -107,7 +107,19 @@ Command: `$USER1$/check_nrpe -H $HOSTADDRESS$ -t 30 -c $ARG1$ -a $ARG2$`
 
 $ARG1$: `check_domain_admins`
 
-$ARG2$: `"ATOMIA\Administrator,ATOMIA\WindowsAdmin"`
+$ARG2$: `'"ATOMIA\Administrator","ATOMIA\WindowsAdmin"'`
+
+or
+
+$ARG2$: `'"ATOMIA\Administrator,ATOMIA\WindowsAdmin"'`
+
+> **Important:** Use double quotes `'"` - wrap whole argument in `'` quotes
+
+
+> **Important:** 
+> Use `check_nrpe_1arg` instead `check_nrpe` as _Check command_ in Nagios UI interface.
+>
+> `check_nrpe_1arg` passes `$ARG2$` argument via `-a` as required, where `check_nrpe` passes `$ARG2$` via `-c` and it is not properly substituted. Powershell script will get `$` as parameter value instead value in `$ARG2$`
 
 ## check_logons.ps1
 Nagios plugin that alerts if there are 4624 EventIDs aka logins in the Security event log of the system.
