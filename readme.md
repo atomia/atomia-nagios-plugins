@@ -341,3 +341,12 @@ Command: `$USER1$/check_nrpe -H $HOSTADDRESS$ -t 30 -c $ARG1$ -a $ARG2$ $ARG3$ $
 $ARG1$: `check_logons`
 
 $ARG2$: `SOME_ID`
+
+## check_autopatching.sh
+1. Deploy the script in some folder on the autopatching server.
+2. Make sure nagios can run the script as root.
+3. Place the following in nrpe.conf on the autopatching host:
+```
+command[check_autopatching]=/usr/bin/sudo PATH_TO_SCRIPT_ON_FILE_SYSTEM/check_autopatching.sh
+```
+4. Add nrpe check on Nagios.
