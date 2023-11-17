@@ -34,11 +34,12 @@ Dependencies:
 This script checks certificate expiration dates on the Windows server. The script will list all certificates from store, and alert if they are near expiration dates and due for renewal.
 
 ### Parameters
-Without parameters, default values 15 and 30 are used for warning and critical, respectively. Custom values can be used. Warning value should be set first, and critical value should be set second. However, the script will automatically recognize lower value and use it as critical threshold.
+Without parameters, the script will by default use "Cert:\LocalMachine\My" cert store and values 15 and 30 for warning and critical thresholds, respectively. The script will automatically recognize lower value and use it as critical threshold instead. Custom values can be set:
 ```
-.\check_certs.ps1 10 20
-    10 - value for WARNING
-    20 - value for CRITICAL
+.\check_certs.ps1
+    -CriticalThreshold 10
+    -WarningThreshold 20
+    -storeLocation "Cert:\LocalMachine\Root"
 ```
 
 ### Exit codes

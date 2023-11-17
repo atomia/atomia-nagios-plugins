@@ -7,9 +7,10 @@
 # Parameters:  Without parameters, default values 15 and 30 are used for warning and
 #              critical, respectively. Custom values can be used.
 #              
-#              .\check_certs.ps1 10 20
-#                  10 - value for WARNING
-#                  20 - value for CRITICAL
+#              .\check_certs.ps1
+#                  -CriticalThreshold 10
+#                  -WarningThreshold 20
+#                  -storeLocation "Cert:\LocalMachine\Root"
 #
 # Returns:
 #              0 - OK
@@ -22,8 +23,9 @@
 ##########################################################################################
 
 param(
-    [int]$CriticalThreshold = 15, # Default value if not specified
-    [int]$WarningThreshold = 30   # Default value if not specified
+    [int]$CriticalThreshold = 15,  # Default value if not specified
+    [int]$WarningThreshold = 30,   # Default value if not specified
+    [string]$storeLocation = "Cert:\LocalMachine\My"  # Default certificate store location
 )
 
 # Initialize the exit code - 0 means no certificates are near expiration
@@ -35,9 +37,6 @@ if ($WarningThreshold -lt $CriticalThreshold) {
     $WarningThreshold = $CriticalThreshold
     $CriticalThreshold = $temp
 }
-
-# Specify the certificate store to check
-$storeLocation = "Cert:\LocalMachine\My"
 
 # Get all certificates from the specified store
 $certificates = Get-ChildItem -Path $storeLocation
@@ -52,12 +51,17 @@ foreach ($cert in $certificates) {
     # Calculate days until expiration
     $daysUntilExpiration = ($expirationDate - $currentDate).Days
 
+    # Check if the certificate has expired
+    if ($daysUntilExpiration -lt 0) {
+        Write-Host "CRITICAL: Certificate $($cert.Subject) expired on $expirationDate!"
+        $exitCode = 2 # Set exit code for critical, as expired is a critical issue
+    }
     # Check if the certificate is close to expiration
-    if ($daysUntilExpiration -le $CriticalThreshold) {
-        Write-Host "CRITICAL: Certificate $($cert.Subject) will expire in $daysUntilExpiration days!"
+    elseif ($daysUntilExpiration -le $CriticalThreshold) {
+        Write-Host "CRITICAL: Certificate $($cert.Subject) will expire in $daysUntilExpiration days, on $expirationDate!"
         $exitCode = 2 # Set exit code for critical
     } elseif ($daysUntilExpiration -le $WarningThreshold) {
-        Write-Host "WARNING: Certificate $($cert.Subject) will expire in $daysUntilExpiration days!"
+        Write-Host "WARNING: Certificate $($cert.Subject) will expire in $daysUntilExpiration days, on $expirationDate!"
         # Only update exit code for warning if a more severe status hasn't been encountered
         if ($exitCode -ne 2) {
             $exitCode = 1
