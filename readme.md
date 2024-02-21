@@ -30,6 +30,25 @@ Dependencies:
 * **WWW::Mechanize** (on ubuntu, just `apt-get install libwww-mechanize-perl`)
 * **BeautifulSoup4** (ubuntu: `apt-get install python-bs4 python3-bs4`)
 
+## check_certs.ps1
+This script checks certificate expiration dates on the Windows server. The script will list all certificates from store, and alert if they are near expiration dates and due for renewal.
+
+### Parameters
+Without parameters, the script will by default use "Cert:\LocalMachine\My" cert store and values 15 and 30 for warning and critical thresholds, respectively. The script will automatically recognize lower value and use it as critical threshold instead. Custom values can be set:
+```
+.\check_certs.ps1
+    -CriticalThreshold 10
+    -WarningThreshold 20
+    -storeLocation "Cert:\LocalMachine\Root"
+```
+
+### Exit codes
+```
+    0 - OK
+    1 - WARNING
+    2 - CRITICAL
+```
+
 ## check_admins.ps1
 This script checks users on the Windows server. Users can be either local or domain based. The script will compare the list of accounts provided and if there are more users on the system than on the list the script will output CRITICAL.
 
